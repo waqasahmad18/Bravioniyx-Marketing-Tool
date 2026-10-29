@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env*
+*.pem
+.DS_Store
+Thumbs.db
+*.log
+.vercel
+*.tsbuildinfo
+scripts/check-li-posts.ts
