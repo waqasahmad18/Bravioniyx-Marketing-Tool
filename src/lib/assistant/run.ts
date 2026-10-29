@@ -125,7 +125,13 @@ function summarizeAction(tool: string, result: unknown) {
   if (tool === "sync_insights" || tool === "run_daily" || tool === "rebuild_today") return `${tool} finished`;
   if (tool === "set_post_analytics") return r.ok ? "Analytics updated" : String(r.error || "Failed");
   if (tool === "draft_blog") return "SEO blog draft created";
-  if (tool === "publish_blog") return r.ok ? "Blog published live" : String(r.error || "Publish failed");
+  if (tool === "publish_blog") {
+    if (!r.ok) return String(r.error || "Publish failed");
+    return r.liveUrl ? `Blog published live → ${r.liveUrl}` : "Blog published live";
+  }
+  if (tool === "publish_all_draft_blogs") {
+    return r.ok ? `Published ${r.count ?? 0} draft blog(s) live` : String(r.error || "Publish failed");
+  }
   if (tool === "update_blog") return r.ok ? "Blog updated" : String(r.error || "Update failed");
   if (tool === "get_blog_stats") return "Fetched authentic blog traffic";
   return `${tool} ok`;

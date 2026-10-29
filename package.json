@@ -2,10 +2,13 @@
   "name": "bravioniyx-marketing-manager",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node ./node_modules/next/dist/bin/next dev -p 3001",
     "build": "node ./node_modules/next/dist/bin/next build",
-    "start": "node ./node_modules/next/dist/bin/next start -p 3001",
+    "start": "node ./node_modules/next/dist/bin/next start",
     "lint": "node ./node_modules/next/dist/bin/next lint"
   },
   "dependencies": {

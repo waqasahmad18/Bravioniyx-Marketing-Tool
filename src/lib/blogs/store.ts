@@ -165,25 +165,50 @@ export async function updateBlog(
   return { ok: true as const, blog: await getBlogById(id) };
 }
 
-export async function publishBlog(id: string) {
-  if (!ObjectId.isValid(id)) return { ok: false as const, error: "Invalid blog id." };
+export async function publishBlog(idOrSlug: string) {
+  const key = String(idOrSlug || "").trim();
+  if (!key) return { ok: false as const, error: "Missing blog id or slug." };
   const db = await getDb();
   const now = new Date().toISOString();
-  await db.collection(BLOGS).updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { status: "published", publishedAt: now, updatedAt: now } },
-  );
-  return { ok: true as const, blog: await getBlogById(id) };
+  const filter = ObjectId.isValid(key) ? { _id: new ObjectId(key) } : { slug: key };
+  const result = await db.collection(BLOGS).updateOne(filter, {
+    $set: { status: "published", publishedAt: now, updatedAt: now },
+  });
+  if (!result.matchedCount) return { ok: false as const, error: "Blog not found." };
+  const blog = ObjectId.isValid(key) ? await getBlogById(key) : await getBlogBySlug(key);
+  return {
+    ok: true as const,
+    blog,
+    liveUrl: blog?.slug ? `https://www.bravioniyx.com/blog/${blog.slug}` : undefined,
+    managerUrl: blog?.slug ? `/blogs/${blog.slug}` : undefined,
+  };
 }
 
-export async function unpublishBlog(id: string) {
-  if (!ObjectId.isValid(id)) return { ok: false as const, error: "Invalid blog id." };
+/** Publish every draft (used when operator says publish all / put blogs live on website). */
+export async function publishAllDraftBlogs(limit = 20) {
+  const drafts = await listBlogs({ status: "draft", limit });
+  const published: Array<{ id: string; slug: string; liveUrl?: string }> = [];
+  for (const draft of drafts) {
+    const result = await publishBlog(draft.id);
+    if (result.ok && result.blog) {
+      published.push({ id: result.blog.id, slug: result.blog.slug, liveUrl: result.liveUrl });
+    }
+  }
+  return { ok: true as const, count: published.length, published };
+}
+
+export async function unpublishBlog(idOrSlug: string) {
+  const key = String(idOrSlug || "").trim();
+  if (!key) return { ok: false as const, error: "Missing blog id or slug." };
   const db = await getDb();
-  await db.collection(BLOGS).updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { status: "draft", updatedAt: new Date().toISOString() }, $unset: { publishedAt: "" } },
-  );
-  return { ok: true as const, blog: await getBlogById(id) };
+  const filter = ObjectId.isValid(key) ? { _id: new ObjectId(key) } : { slug: key };
+  const result = await db.collection(BLOGS).updateOne(filter, {
+    $set: { status: "draft", updatedAt: new Date().toISOString() },
+    $unset: { publishedAt: "" },
+  });
+  if (!result.matchedCount) return { ok: false as const, error: "Blog not found." };
+  const blog = ObjectId.isValid(key) ? await getBlogById(key) : await getBlogBySlug(key);
+  return { ok: true as const, blog };
 }
 
 export async function deleteBlog(id: string) {

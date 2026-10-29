@@ -31,6 +31,7 @@ import {
   getBlogTotals,
   listBlogs,
   publishBlog,
+  publishAllDraftBlogs,
   unpublishBlog,
   updateBlog,
 } from "@/lib/blogs/store";
@@ -444,11 +445,27 @@ export const openAiTools = [
     type: "function" as const,
     function: {
       name: "publish_blog",
-      description: "Publish a reviewed blog draft live to /blogs/[slug].",
+      description:
+        "Publish one blog draft live on bravioniyx.com/blog/[slug]. Pass blogId (24-char) OR slug. Call this when the user asks to publish / go live / put on website.",
       parameters: {
         type: "object",
-        properties: { blogId: { type: "string" } },
-        required: ["blogId"],
+        properties: {
+          blogId: { type: "string", description: "Mongo blog id or slug" },
+          slug: { type: "string", description: "Blog slug if id unknown" },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "publish_all_draft_blogs",
+      description:
+        "Publish ALL draft blogs live to the website. Use when user says publish all drafts / put blogs on website / make drafts live.",
+      parameters: {
+        type: "object",
+        properties: { limit: { type: "number" } },
         additionalProperties: false,
       },
     },
@@ -653,9 +670,11 @@ export async function runTool(name: string, args: Record<string, unknown>): Prom
       });
     }
     case "publish_blog":
-      return publishBlog(String(args.blogId ?? ""));
+      return publishBlog(String(args.blogId ?? args.id ?? args.slug ?? ""));
+    case "publish_all_draft_blogs":
+      return publishAllDraftBlogs(Number(args.limit ?? 20));
     case "unpublish_blog":
-      return unpublishBlog(String(args.blogId ?? ""));
+      return unpublishBlog(String(args.blogId ?? args.id ?? args.slug ?? ""));
     case "delete_blog":
       return deleteBlog(String(args.blogId ?? ""));
     default:

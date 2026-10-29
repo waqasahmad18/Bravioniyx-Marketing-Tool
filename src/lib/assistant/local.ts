@@ -36,26 +36,43 @@ export async function runLocalAssistant(userText: string) {
     };
   }
 
-  if (/list.*blog|blog.*list|draft.*blog|blogs\?/i.test(text)) {
-    const blogs = await call("list_blogs", { limit: 15 });
+  // Publish BEFORE list — “publish blogs / website pe daal do” must go live, not only list drafts
+  if (
+    /publish\s+all\s+blog|publish\s+all\s+draft|publish.*drafts|all\s+drafts?\s+live|website.*(publish|blog)|publish.*(website|live)|blogs?\s+(ko\s+)?(publish|live)|publish\s+blog/i.test(
+      text,
+    )
+  ) {
+    const idMatch = userText.match(/[a-f0-9]{24}/i);
+    const slugMatch = userText.match(/\b([a-z0-9][a-z0-9-]{8,})\b/i);
+    if (/all|drafts|saari|sari|sab/i.test(text) && !idMatch) {
+      const result = await call("publish_all_draft_blogs", { limit: 20 });
+      return {
+        reply: `Published draft blogs live on bravioniyx.com/blog:\n${JSON.stringify(result, null, 2)}`,
+        actions,
+      };
+    }
+    if (idMatch) {
+      const result = await call("publish_blog", { blogId: idMatch[0] });
+      return {
+        reply: `Publish result:\n${JSON.stringify(result, null, 2)}\nLive on https://www.bravioniyx.com/blog/…`,
+        actions,
+      };
+    }
+    if (slugMatch && !/publish|blog|draft|website|live|all/i.test(slugMatch[1])) {
+      // unlikely — fall through
+    }
+    // No id: publish all current drafts (operator asked to put blogs on website)
+    const result = await call("publish_all_draft_blogs", { limit: 20 });
     return {
-      reply: `Here are the latest blogs:\n${JSON.stringify(blogs, null, 2)}\n\nSay “publish blog <id>” after you review a draft.`,
+      reply: `No specific id given — published all drafts live:\n${JSON.stringify(result, null, 2)}`,
       actions,
     };
   }
 
-  if (/publish\s+blog|publish.*blog/i.test(text)) {
-    const idMatch = text.match(/[a-f0-9]{24}/i);
-    if (!idMatch) {
-      const drafts = await call("list_blogs", { status: "draft", limit: 10 });
-      return {
-        reply: `Tell me the blog id to publish. Drafts:\n${JSON.stringify(drafts, null, 2)}`,
-        actions,
-      };
-    }
-    const result = await call("publish_blog", { blogId: idMatch[0] });
+  if (/list.*blog|blog.*list|show.*draft.*blog|blogs\?/i.test(text)) {
+    const blogs = await call("list_blogs", { limit: 15 });
     return {
-      reply: `Publish result:\n${JSON.stringify(result, null, 2)}\nIt will appear on the website /blog page.`,
+      reply: `Here are the latest blogs:\n${JSON.stringify(blogs, null, 2)}\n\nSay “publish all drafts” or “publish blog <id>” to go live on bravioniyx.com/blog.`,
       actions,
     };
   }
