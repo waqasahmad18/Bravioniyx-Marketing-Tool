@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import CreativeGraphic from "@/components/CreativeGraphic";
-import CopyCaption from "@/components/CopyCaption";
 import GraphicActions from "@/components/GraphicActions";
 import PublicFeedPreview from "@/components/PublicFeedPreview";
 import PostCtaButton from "@/components/PostCtaButton";
@@ -59,9 +58,6 @@ export default function PostCard({
           </p>
           <PublicFeedPreview post={post} />
           <div className="mt-4 flex flex-col items-center gap-3">
-            <div className="flex flex-wrap justify-center gap-3">
-              <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
-            </div>
             <GraphicActions post={post} onMessage={setMessage} openRequestId={openGraphicId} />
             {(post.status === "scheduled" || post.status === "failed") ? (
               <button
@@ -151,17 +147,16 @@ export default function PostCard({
             {message ? <p className="mt-3 text-sm text-neutral-600">{message}</p> : null}
 
             <div className="mt-5 flex flex-col gap-3 border-t border-neutral-200 pt-4">
+              <GraphicActions post={post} onMessage={setMessage} openRequestId={openGraphicId} />
               <div className="flex flex-wrap items-center gap-3">
-                <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
                 <button
                   type="button"
                   onClick={() => setShowPublic(true)}
-                  className="text-xs font-semibold uppercase tracking-[0.14em] text-[#E10600]"
+                  className="min-h-10 text-xs font-semibold uppercase tracking-[0.14em] text-[#E10600]"
                 >
                   See public view
                 </button>
               </div>
-              <GraphicActions post={post} onMessage={setMessage} openRequestId={openGraphicId} />
               <div className="flex flex-wrap items-center gap-3">
               {canAuto ? (
                 <button

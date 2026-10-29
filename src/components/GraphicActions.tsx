@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CopyCaption from "@/components/CopyCaption";
 import { exportCreativePng } from "@/lib/export-graphic";
 import {
   copyGraphicImage,
@@ -15,11 +16,13 @@ export default function GraphicActions({
   post,
   onMessage,
   openRequestId = 0,
+  showCopyCaption = true,
 }: {
   post: Post;
   onMessage?: (msg: string) => void;
   /** Increment to open the fullscreen image viewer (e.g. when user taps the post graphic). */
   openRequestId?: number;
+  showCopyCaption?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -125,11 +128,18 @@ export default function GraphicActions({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {showCopyCaption ? (
+          <CopyCaption
+            text={post.caption}
+            ctaLabel={post.ctaLabel}
+            href={post.destination || post.link}
+          />
+        ) : null}
         <button
           type="button"
           disabled={busy}
           onClick={openPreview}
-          className="min-h-10 bg-[#E10600] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50"
+          className="min-h-10 border border-neutral-300 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] disabled:opacity-50"
         >
           {busy ? "…" : "Open graphic"}
         </button>
@@ -145,7 +155,7 @@ export default function GraphicActions({
           type="button"
           disabled={busy}
           onClick={onShare}
-          className="min-h-10 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-800 disabled:opacity-50"
+          className="min-h-10 border border-neutral-300 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] disabled:opacity-50"
         >
           Share
         </button>
@@ -153,7 +163,7 @@ export default function GraphicActions({
           type="button"
           disabled={busy}
           onClick={onCopy}
-          className="min-h-10 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-800 disabled:opacity-50"
+          className="min-h-10 border border-neutral-300 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] disabled:opacity-50"
         >
           Copy graphic
         </button>
@@ -192,11 +202,17 @@ export default function GraphicActions({
             />
           </div>
 
-          <div className="flex gap-2 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+          <div className="flex flex-wrap gap-2 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+            <CopyCaption
+              text={post.caption}
+              ctaLabel={post.ctaLabel}
+              href={post.destination || post.link}
+              variant="dark"
+            />
             <button
               type="button"
               disabled={busy}
-              className="min-h-12 flex-1 bg-white px-3 text-xs font-semibold uppercase tracking-[0.12em] text-black disabled:opacity-50"
+              className="min-h-11 flex-1 bg-white px-3 text-xs font-semibold uppercase tracking-[0.12em] text-black disabled:opacity-50"
               onClick={onDownload}
             >
               Download
@@ -204,7 +220,7 @@ export default function GraphicActions({
             <button
               type="button"
               disabled={busy}
-              className="min-h-12 flex-1 border border-white/40 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50"
+              className="min-h-11 flex-1 border border-white/40 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50"
               onClick={onShare}
             >
               Share
