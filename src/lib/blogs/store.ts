@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { BLOGS, getDb } from "@/lib/db";
+import { coverImageForService, resolveCoverImageUrl } from "@/lib/blogs/covers";
 import { generateBlogDraft } from "@/lib/blogs/generate";
 import { slugify } from "@/lib/blogs/seo";
 import type { BlogPost, BlogStatus, BlogStats } from "@/lib/blogs/types";
@@ -23,7 +24,10 @@ function mapBlog(doc: Record<string, unknown>): BlogPost {
     title: String(doc.title ?? ""),
     excerpt: String(doc.excerpt ?? ""),
     body: String(doc.body ?? ""),
-    coverImageUrl: String(doc.coverImageUrl ?? ""),
+    coverImageUrl: resolveCoverImageUrl({
+      coverImageUrl: String(doc.coverImageUrl ?? ""),
+      serviceSlug: String(doc.serviceSlug ?? ""),
+    }),
     coverImageAlt: String(doc.coverImageAlt ?? ""),
     serviceSlug: String(doc.serviceSlug ?? ""),
     serviceTitle: String(doc.serviceTitle ?? ""),
@@ -106,7 +110,7 @@ export async function createBlog(input: {
     title: input.title.trim(),
     excerpt: input.excerpt.trim(),
     body: input.body.trim(),
-    coverImageUrl: (input.coverImageUrl || "").trim(),
+    coverImageUrl: (input.coverImageUrl || "").trim() || coverImageForService(input.serviceSlug),
     coverImageAlt: (input.coverImageAlt || input.title).trim(),
     serviceSlug: input.serviceSlug,
     serviceTitle: input.serviceTitle,

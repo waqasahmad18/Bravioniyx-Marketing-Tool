@@ -1,3 +1,4 @@
+import { coverImageForService } from "@/lib/blogs/covers";
 import { topicForService, slugify, serviceForDay } from "@/lib/blogs/seo";
 import { brand } from "@/lib/brand";
 
@@ -120,7 +121,7 @@ body uses \\n\\n between paragraphs; ## for headings.`,
           metaTitle: parsed.metaTitle || `${title} | Bravioniyx`,
           metaDescription: parsed.metaDescription || baseService.metaDescription,
           coverImageAlt: parsed.coverImageAlt || `${service.title} — Bravioniyx Technologies`,
-          coverImageUrl: "",
+          coverImageUrl: coverImageForService(service.slug),
           serviceSlug: service.slug,
           serviceTitle: service.title,
           keywords,
@@ -148,7 +149,7 @@ body uses \\n\\n between paragraphs; ## for headings.`,
     metaTitle: `${title} | Bravioniyx`,
     metaDescription: baseService.metaDescription,
     coverImageAlt: `${service.title} — Bravioniyx Technologies`,
-    coverImageUrl: "",
+    coverImageUrl: coverImageForService(service.slug),
     serviceSlug: service.slug,
     serviceTitle: service.title,
     keywords,
