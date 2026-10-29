@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CopyCaption from "@/components/CopyCaption";
 import { exportCreativePng } from "@/lib/export-graphic";
 import {
@@ -11,6 +11,8 @@ import {
   shareGraphicFile,
 } from "@/lib/graphic-actions";
 import type { Post } from "@/lib/types";
+
+const PREVIEW_STATE_KEY = "bxGraphicPreview";
 
 export default function GraphicActions({
   post,
@@ -26,6 +28,7 @@ export default function GraphicActions({
 }) {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const historyPushed = useRef(false);
 
   const build = async () => {
     return exportCreativePng({
@@ -41,6 +44,18 @@ export default function GraphicActions({
   };
 
   const say = (msg: string) => onMessage?.(msg);
+
+  const closePreview = () => {
+    // Prefer history.back so Android/WebView back stack stays on this planner page
+    if (historyPushed.current) {
+      historyPushed.current = false;
+      if (typeof window !== "undefined" && window.history.state?.[PREVIEW_STATE_KEY]) {
+        window.history.back();
+        return;
+      }
+    }
+    setPreviewUrl(null);
+  };
 
   const openPreview = async () => {
     setBusy(true);
@@ -60,6 +75,33 @@ export default function GraphicActions({
     void openPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open when parent bumps the request id
   }, [openRequestId]);
+
+  // Keep the same planner page when closing preview (✕ or Android back)
+  useEffect(() => {
+    if (!previewUrl || typeof window === "undefined") return;
+
+    if (!window.history.state?.[PREVIEW_STATE_KEY]) {
+      window.history.pushState(
+        { ...(window.history.state || {}), [PREVIEW_STATE_KEY]: true, bxPostId: post.id },
+        "",
+      );
+      historyPushed.current = true;
+    }
+
+    const onPopState = () => {
+      historyPushed.current = false;
+      setPreviewUrl(null);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [previewUrl, post.id]);
 
   const onShare = async () => {
     setBusy(true);
@@ -170,12 +212,17 @@ export default function GraphicActions({
       </div>
 
       {previewUrl ? (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+        <div
+          className="fixed inset-0 z-[100] flex flex-col bg-black"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Graphic preview"
+        >
           <div className="flex items-center justify-between gap-3 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
             <button
               type="button"
               className="min-h-11 min-w-11 px-2 text-sm font-semibold"
-              onClick={() => setPreviewUrl(null)}
+              onClick={closePreview}
               aria-label="Close"
             >
               ✕
