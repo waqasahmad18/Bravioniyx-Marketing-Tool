@@ -4,6 +4,16 @@ export type GraphicPayload = {
   dataUrl: string;
 };
 
+type NativeBridge = {
+  saveImage?: (dataUrl: string, filename: string) => void;
+};
+
+declare global {
+  interface Window {
+    BravioniyxNative?: NativeBridge;
+  }
+}
+
 function filenameFor(channel: string, day: number) {
   return `bravioniyx-${channel.toLowerCase()}-day-${day}.png`;
 }
@@ -13,8 +23,28 @@ export async function dataUrlToBlob(dataUrl: string) {
   return res.blob();
 }
 
-/** Mobile-first: Share sheet (best on Android app WebView), then clipboard image, then blob download. */
-export async function deliverGraphic(payload: GraphicPayload): Promise<"shared" | "copied" | "downloaded" | "preview"> {
+/** Save PNG into the phone Gallery via Android WebView bridge (best path in the app). */
+export function saveGraphicToGallery(payload: GraphicPayload): boolean {
+  try {
+    const bridge = typeof window !== "undefined" ? window.BravioniyxNative : undefined;
+    if (!bridge?.saveImage) return false;
+    bridge.saveImage(payload.dataUrl, filenameFor(payload.channel, payload.day));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function hasNativeGallerySave() {
+  return typeof window !== "undefined" && typeof window.BravioniyxNative?.saveImage === "function";
+}
+
+/** Mobile-first: native gallery → Share sheet → clipboard → blob download. */
+export async function deliverGraphic(
+  payload: GraphicPayload,
+): Promise<"gallery" | "shared" | "copied" | "downloaded" | "preview"> {
+  if (saveGraphicToGallery(payload)) return "gallery";
+
   const name = filenameFor(payload.channel, payload.day);
   const blob = await dataUrlToBlob(payload.dataUrl);
   const file = new File([blob], name, { type: "image/png" });
@@ -23,7 +53,6 @@ export async function deliverGraphic(payload: GraphicPayload): Promise<"shared" 
     canShare?: (data?: ShareData) => boolean;
   };
 
-  // 1) Native share (Android WebView / mobile Chrome) — paste into FB/IG/LinkedIn from share targets
   try {
     if (typeof navigator.share === "function" && nav.canShare?.({ files: [file] })) {
       await navigator.share({
@@ -34,11 +63,9 @@ export async function deliverGraphic(payload: GraphicPayload): Promise<"shared" 
       return "shared";
     }
   } catch (error) {
-    // user cancel → still try other methods
     if (error instanceof DOMException && error.name === "AbortError") return "shared";
   }
 
-  // 2) Copy image to clipboard (desktop / some mobile browsers)
   try {
     if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -48,7 +75,6 @@ export async function deliverGraphic(payload: GraphicPayload): Promise<"shared" 
     // fall through
   }
 
-  // 3) Classic download (often blocked inside Android WebView)
   try {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

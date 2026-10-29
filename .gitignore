@@ -9,3 +9,9 @@ Thumbs.db
 .vercel
 *.tsbuildinfo
 scripts/check-li-posts.ts
+dist-apk/
+android-wrapper/.gradle/
+android-wrapper/**/build/
+android-wrapper/local.properties
+android-wrapper/*.iml
+android-wrapper/.idea/

@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { exportCreativePng } from "@/lib/export-graphic";
-import { copyGraphicImage, deliverGraphic, shareGraphicFile } from "@/lib/graphic-actions";
+import {
+  copyGraphicImage,
+  deliverGraphic,
+  hasNativeGallerySave,
+  saveGraphicToGallery,
+  shareGraphicFile,
+} from "@/lib/graphic-actions";
 import type { Post } from "@/lib/types";
 
 export default function GraphicActions({
   post,
   onMessage,
+  openRequestId = 0,
 }: {
   post: Post;
   onMessage?: (msg: string) => void;
+  /** Increment to open the fullscreen image viewer (e.g. when user taps the post graphic). */
+  openRequestId?: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -35,7 +44,7 @@ export default function GraphicActions({
     try {
       const dataUrl = await build();
       setPreviewUrl(dataUrl);
-      say("Long-press the image → Save / Share, then paste into LinkedIn / FB / IG.");
+      say("Tap Download to save in Gallery, then open LinkedIn / FB / IG.");
     } catch {
       say("Could not prepare graphic. Try again.");
     } finally {
@@ -43,19 +52,25 @@ export default function GraphicActions({
     }
   };
 
+  useEffect(() => {
+    if (!openRequestId) return;
+    void openPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open when parent bumps the request id
+  }, [openRequestId]);
+
   const onShare = async () => {
     setBusy(true);
     try {
-      const dataUrl = await build();
+      const dataUrl = previewUrl || (await build());
+      if (!previewUrl) setPreviewUrl(dataUrl);
       const ok = await shareGraphicFile({ channel: post.channel, day: post.day, dataUrl });
       if (ok) {
         say("Share sheet opened — send to LinkedIn / Facebook / Instagram / Files.");
         return;
       }
-      setPreviewUrl(dataUrl);
-      say("Share not available here. Long-press image → Save, then upload on the platform.");
+      say("Share not available here. Use Download to save in Gallery.");
     } catch {
-      say("Share failed. Use Copy graphic or long-press preview.");
+      say("Share failed. Use Download.");
     } finally {
       setBusy(false);
     }
@@ -64,22 +79,20 @@ export default function GraphicActions({
   const onCopy = async () => {
     setBusy(true);
     try {
-      const dataUrl = await build();
+      const dataUrl = previewUrl || (await build());
+      if (!previewUrl) setPreviewUrl(dataUrl);
       const ok = await copyGraphicImage(dataUrl);
       if (ok) {
-        say("Graphic copied. Open LinkedIn/FB/IG and paste (Ctrl+V / long-press Paste).");
+        say("Graphic copied. Open LinkedIn/FB/IG and paste.");
         return;
       }
-      // Fallback: smart deliver or preview
       const mode = await deliverGraphic({ channel: post.channel, day: post.day, dataUrl });
-      if (mode === "shared") say("Shared — pick LinkedIn / Facebook / Gallery.");
-      else if (mode === "downloaded") say("Download started. If nothing saved, use Share or long-press preview.");
-      else {
-        setPreviewUrl(dataUrl);
-        say("Clipboard blocked in app. Long-press image → Save / Share.");
-      }
+      if (mode === "gallery") say("Saved to Gallery.");
+      else if (mode === "shared") say("Shared — pick LinkedIn / Facebook / Gallery.");
+      else if (mode === "downloaded") say("Download started.");
+      else say("Clipboard blocked. Use Download.");
     } catch {
-      say("Copy failed. Tap Share graphic or Open preview.");
+      say("Copy failed. Use Download or Share.");
     } finally {
       setBusy(false);
     }
@@ -88,17 +101,22 @@ export default function GraphicActions({
   const onDownload = async () => {
     setBusy(true);
     try {
-      const dataUrl = await build();
-      const mode = await deliverGraphic({ channel: post.channel, day: post.day, dataUrl });
-      if (mode === "shared") say("Share sheet opened (best for mobile app).");
-      else if (mode === "copied") say("Graphic copied to clipboard — paste into your post.");
-      else if (mode === "downloaded") say("Download started.");
-      else {
-        setPreviewUrl(dataUrl);
-        say("Download blocked in mobile app. Long-press image → Save image.");
+      const dataUrl = previewUrl || (await build());
+      if (!previewUrl) setPreviewUrl(dataUrl);
+
+      if (saveGraphicToGallery({ channel: post.channel, day: post.day, dataUrl })) {
+        say("Saved to Gallery — open Photos / Gallery to find it.");
+        return;
       }
+
+      const mode = await deliverGraphic({ channel: post.channel, day: post.day, dataUrl });
+      if (mode === "gallery") say("Saved to Gallery.");
+      else if (mode === "shared") say("Share sheet opened — choose Save / Gallery / Files.");
+      else if (mode === "copied") say("Graphic copied — paste into your post.");
+      else if (mode === "downloaded") say("Download started.");
+      else say("Long-press the image → Save image.");
     } catch {
-      say("Graphic failed. Refresh and try Share / Copy.");
+      say("Download failed. Try Share graphic.");
     } finally {
       setBusy(false);
     }
@@ -110,73 +128,87 @@ export default function GraphicActions({
         <button
           type="button"
           disabled={busy}
-          onClick={onCopy}
-          className="min-h-10 border border-neutral-300 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] disabled:opacity-50"
-        >
-          {busy ? "…" : "Copy graphic"}
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onShare}
+          onClick={openPreview}
           className="min-h-10 bg-[#E10600] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50"
         >
-          Share graphic
+          {busy ? "…" : "Open graphic"}
         </button>
         <button
           type="button"
           disabled={busy}
           onClick={onDownload}
-          className="min-h-10 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-800 disabled:opacity-50"
+          className="min-h-10 border border-neutral-300 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] disabled:opacity-50"
         >
           Download
         </button>
         <button
           type="button"
           disabled={busy}
-          onClick={openPreview}
-          className="min-h-10 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#E10600] disabled:opacity-50"
+          onClick={onShare}
+          className="min-h-10 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-800 disabled:opacity-50"
         >
-          Open preview
+          Share
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onCopy}
+          className="min-h-10 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-800 disabled:opacity-50"
+        >
+          Copy graphic
         </button>
       </div>
 
       {previewUrl ? (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-4 sm:items-center">
-          <div className="max-h-[92dvh] w-full max-w-lg overflow-auto bg-white p-4 shadow-xl">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Graphic ready</p>
-                <p className="mt-1 text-xs text-neutral-600">
-                  Mobile: long-press image → Save / Share → open LinkedIn/FB/IG and attach.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="min-h-10 px-2 text-xs font-semibold uppercase tracking-[0.14em]"
-                onClick={() => setPreviewUrl(null)}
-              >
-                Close
-              </button>
-            </div>
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+          <div className="flex items-center justify-between gap-3 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
+            <button
+              type="button"
+              className="min-h-11 min-w-11 px-2 text-sm font-semibold"
+              onClick={() => setPreviewUrl(null)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            <p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              Day {post.day} · {post.channel}
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onDownload}
+              className="min-h-11 rounded-sm bg-[#E10600] px-4 text-xs font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50"
+            >
+              {busy ? "…" : hasNativeGallerySave() ? "Save gallery" : "Download"}
+            </button>
+          </div>
+
+          <div className="flex min-h-0 flex-1 items-center justify-center px-3 py-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Post graphic" className="mx-auto w-full max-w-sm border border-neutral-200" />
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="min-h-11 flex-1 bg-black px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white"
-                onClick={onShare}
-              >
-                Share to apps
-              </button>
-              <button
-                type="button"
-                className="min-h-11 flex-1 border border-neutral-300 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em]"
-                onClick={onCopy}
-              >
-                Copy graphic
-              </button>
-            </div>
+            <img
+              src={previewUrl}
+              alt="Post graphic"
+              className="max-h-full max-w-full object-contain shadow-2xl"
+            />
+          </div>
+
+          <div className="flex gap-2 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+            <button
+              type="button"
+              disabled={busy}
+              className="min-h-12 flex-1 bg-white px-3 text-xs font-semibold uppercase tracking-[0.12em] text-black disabled:opacity-50"
+              onClick={onDownload}
+            >
+              Download
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              className="min-h-12 flex-1 border border-white/40 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-white disabled:opacity-50"
+              onClick={onShare}
+            >
+              Share
+            </button>
           </div>
         </div>
       ) : null}

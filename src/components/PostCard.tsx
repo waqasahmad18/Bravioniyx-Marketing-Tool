@@ -28,9 +28,11 @@ export default function PostCard({
 }) {
   const [message, setMessage] = useState("");
   const [showPublic, setShowPublic] = useState(defaultPublicView);
+  const [openGraphicId, setOpenGraphicId] = useState(0);
   const [pending, startTransition] = useTransition();
   const look = chrome[post.channel] ?? { bar: "bg-neutral-800", label: post.channel };
   const canAuto = post.status === "scheduled";
+  const openGraphic = () => setOpenGraphicId((n) => n + 1);
 
   return (
     <article className="overflow-hidden border border-neutral-300 bg-white shadow-sm">
@@ -60,7 +62,7 @@ export default function PostCard({
             <div className="flex flex-wrap justify-center gap-3">
               <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
             </div>
-            <GraphicActions post={post} onMessage={setMessage} />
+            <GraphicActions post={post} onMessage={setMessage} openRequestId={openGraphicId} />
             {(post.status === "scheduled" || post.status === "failed") ? (
               <button
                 type="button"
@@ -88,7 +90,12 @@ export default function PostCard({
         </div>
       ) : (
         <div className="grid gap-0 lg:grid-cols-[minmax(260px,0.9fr)_1.1fr]">
-          <div className="bg-neutral-950 p-3 sm:p-4">
+          <button
+            type="button"
+            onClick={openGraphic}
+            className="block w-full bg-neutral-950 p-3 text-left sm:p-4"
+            aria-label="Open graphic fullscreen"
+          >
             <CreativeGraphic
               channel={post.channel}
               title={post.graphicTitle}
@@ -98,7 +105,10 @@ export default function PostCard({
               day={post.day}
               ctaLabel={post.ctaLabel}
             />
-          </div>
+            <p className="mt-2 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+              Tap to open · Download
+            </p>
+          </button>
 
         <div className="flex flex-col p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#E10600]">{post.service}</p>
@@ -151,7 +161,7 @@ export default function PostCard({
                   See public view
                 </button>
               </div>
-              <GraphicActions post={post} onMessage={setMessage} />
+              <GraphicActions post={post} onMessage={setMessage} openRequestId={openGraphicId} />
               <div className="flex flex-wrap items-center gap-3">
               {canAuto ? (
                 <button
