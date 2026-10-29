@@ -3,10 +3,10 @@
 import { useState, useTransition } from "react";
 import CreativeGraphic from "@/components/CreativeGraphic";
 import CopyCaption from "@/components/CopyCaption";
+import GraphicActions from "@/components/GraphicActions";
 import PublicFeedPreview from "@/components/PublicFeedPreview";
 import PostCtaButton from "@/components/PostCtaButton";
 import { markPostedAction, publishPostAction } from "@/lib/actions";
-import { exportCreativePng } from "@/lib/export-graphic";
 import type { Post } from "@/lib/types";
 
 const chrome: Record<string, { bar: string; label: string }> = {
@@ -32,29 +32,6 @@ export default function PostCard({
   const look = chrome[post.channel] ?? { bar: "bg-neutral-800", label: post.channel };
   const canAuto = post.status === "scheduled";
 
-  const downloadGraphic = async () => {
-    try {
-      setMessage("Preparing graphic…");
-      const dataUrl = await exportCreativePng({
-        channel: post.channel,
-        title: post.graphicTitle,
-        line: post.graphicLine,
-        bullets: post.bullets,
-        variant: post.designVariant || "classic",
-        day: post.day,
-        ctaLabel: post.ctaLabel || "Follow Bravioniyx",
-        href: post.destination || post.link || "https://www.bravioniyx.com",
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `bravioniyx-${post.channel.toLowerCase()}-day-${post.day}.png`;
-      a.click();
-      setMessage("Graphic downloaded.");
-    } catch {
-      setMessage("Download failed. Refresh and try again.");
-    }
-  };
-
   return (
     <article className="overflow-hidden border border-neutral-300 bg-white shadow-sm">
       <div className={`flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-white ${look.bar}`}>
@@ -79,11 +56,11 @@ export default function PostCard({
             Public feed preview for {post.channel} — this is how the post will appear to followers.
           </p>
           <PublicFeedPreview post={post} />
-          <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
-            <button type="button" onClick={downloadGraphic} className="text-xs font-semibold uppercase tracking-[0.14em]">
-              Download graphic
-            </button>
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
+              <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
+            </div>
+            <GraphicActions post={post} onMessage={setMessage} />
             {(post.status === "scheduled" || post.status === "failed") ? (
               <button
                 type="button"
@@ -163,19 +140,19 @@ export default function PostCard({
             {post.publishError ? <p className="mt-3 text-sm text-[#E10600]">{post.publishError}</p> : null}
             {message ? <p className="mt-3 text-sm text-neutral-600">{message}</p> : null}
 
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-neutral-200 pt-4">
-              <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
-              <button type="button" onClick={downloadGraphic} className="text-xs font-semibold uppercase tracking-[0.14em]">
-                Download graphic
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPublic(true)}
-                className="text-xs font-semibold uppercase tracking-[0.14em] text-[#E10600]"
-              >
-                See public view
-              </button>
-
+            <div className="mt-5 flex flex-col gap-3 border-t border-neutral-200 pt-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <CopyCaption text={post.caption} ctaLabel={post.ctaLabel} href={post.destination || post.link} />
+                <button
+                  type="button"
+                  onClick={() => setShowPublic(true)}
+                  className="text-xs font-semibold uppercase tracking-[0.14em] text-[#E10600]"
+                >
+                  See public view
+                </button>
+              </div>
+              <GraphicActions post={post} onMessage={setMessage} />
+              <div className="flex flex-wrap items-center gap-3">
               {canAuto ? (
                 <button
                   type="button"
@@ -210,6 +187,7 @@ export default function PostCard({
                   </button>
                 </form>
               ) : null}
+              </div>
             </div>
           </div>
         </div>
