@@ -17,6 +17,8 @@ import android.provider.MediaStore;
 import android.util.Base64;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
@@ -27,6 +29,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.File;
@@ -39,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     public static final String APP_URL = "https://bravioniyx-marketing-tool.vercel.app/";
     private WebView webView;
     private FrameLayout splash;
+    private ImageView splashLogo;
+    private View splashGlow;
     private ValueCallback<Uri[]> filePathCallback;
     private boolean splashHidden = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -52,7 +57,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         splash = findViewById(R.id.splash);
+        splashLogo = findViewById(R.id.splash_logo);
+        splashGlow = findViewById(R.id.splash_glow);
         webView = findViewById(R.id.webview);
+        startSplashAnimations();
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -170,19 +178,56 @@ public class MainActivity extends AppCompatActivity {
         lastForegroundAt = now;
     }
 
+    private void startSplashAnimations() {
+        if (splashLogo != null) {
+            Animation intro = AnimationUtils.loadAnimation(this, R.anim.splash_logo_in);
+            intro.setAnimationListener(
+                    new Animation.AnimationListener() {
+                        @Override
+                        public void onAnimationStart(Animation animation) {}
+
+                        @Override
+                        public void onAnimationEnd(Animation animation) {
+                            if (splashLogo != null && !splashHidden) {
+                                splashLogo.startAnimation(
+                                        AnimationUtils.loadAnimation(
+                                                MainActivity.this, R.anim.splash_pulse));
+                            }
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animation animation) {}
+                    });
+            splashLogo.startAnimation(intro);
+        }
+        if (splashGlow != null) {
+            splashGlow.startAnimation(AnimationUtils.loadAnimation(this, R.anim.splash_glow_pulse));
+        }
+        View subtitle = findViewById(R.id.splash_subtitle);
+        if (subtitle != null) {
+            AlphaAnimation fadeIn = new AlphaAnimation(0f, 1f);
+            fadeIn.setDuration(700);
+            fadeIn.setStartOffset(280);
+            fadeIn.setFillAfter(true);
+            subtitle.startAnimation(fadeIn);
+        }
+    }
+
     private void hideSplash() {
         if (splashHidden || splash == null) return;
         splashHidden = true;
         if (webView != null) webView.setVisibility(View.VISIBLE);
+        if (splashLogo != null) splashLogo.clearAnimation();
+        if (splashGlow != null) splashGlow.clearAnimation();
         AlphaAnimation fade = new AlphaAnimation(1f, 0f);
-        fade.setDuration(420);
+        fade.setDuration(480);
         fade.setFillAfter(true);
         splash.startAnimation(fade);
         mainHandler.postDelayed(
                 () -> {
                     if (splash != null) splash.setVisibility(View.GONE);
                 },
-                450);
+                500);
     }
 
     private void savePngToGallery(String dataUrl, String filename) {
